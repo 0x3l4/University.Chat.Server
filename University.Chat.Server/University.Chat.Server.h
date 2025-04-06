@@ -7,7 +7,7 @@
 #define MAX_LOADSTRING 100
 #define BUFSIZE 512
 #define WINDOW_X 800
-#define WINDOW_Y 460
+#define WINDOW_Y 530
 #define WM_PIPE_DATA (WM_USER + 1) // Ïîëüçîâàòåëüñêîå ñîîáùåíèå äëÿ ïåðåäà÷è äàííûõ èç ïîòîêà
 
 enum {

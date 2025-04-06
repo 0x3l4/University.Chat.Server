@@ -14,7 +14,7 @@ DWORD WINAPI ReceiverThread(LPVOID lpParam)
     // Создаем мьютекс для синхронизации монопольного доступа (эксклюзивного режима)
     hMutex = CreateMutex(NULL, FALSE, L"Global\\ExclusiveAccessMutex");
     if (hMutex == NULL) {
-        LogStringCreator(L"Не удалось создать мьютекс. GLE=%d.\n", (const wchar_t*)GetLastError());
+        LogStringCreator(L"Не удалось создать мьютекс. E%d.\n", (const wchar_t*)GetLastError());
     }
 
     // Создаем событие для асинхронного ожидания подключения клиента
@@ -24,7 +24,7 @@ DWORD WINAPI ReceiverThread(LPVOID lpParam)
         NULL);   // Без имени
     if (oConnect.hEvent == NULL)
     {
-        LogStringCreator(L"Не удалось создать ивент. GLE=%d.\n", (const wchar_t*)GetLastError());
+        LogStringCreator(L"Не удалось создать ивент. E%d.\n", (const wchar_t*)GetLastError());
         return 0;
     }
 
@@ -44,7 +44,7 @@ DWORD WINAPI ReceiverThread(LPVOID lpParam)
                 fSuccess = GetOverlappedResult(hPipe, &oConnect, &cbRet, FALSE);
                 if (!fSuccess)
                 {
-                    LogStringCreator(L"Не удалось подсоединиться. GLE=%d.\n", (const wchar_t*)GetLastError());
+                    LogStringCreator(L"Не удалось подсоединиться. E%d.\n", (const wchar_t*)GetLastError());
                     return 0;
                 }
             }
@@ -52,7 +52,7 @@ DWORD WINAPI ReceiverThread(LPVOID lpParam)
             lpPipeInst = (LPPIPEINST)GlobalAlloc(GPTR, sizeof(PIPEINST));
             if (lpPipeInst == NULL)
             {
-                LogStringCreator(L"Не удалось выделить память в куче. GLE=%d.\n", (const wchar_t*)GetLastError());
+                LogStringCreator(L"Не удалось выделить память в куче. E%d.\n", (const wchar_t*)GetLastError());
                 return 0;
             }
 
@@ -70,7 +70,7 @@ DWORD WINAPI ReceiverThread(LPVOID lpParam)
             break;
         default:
         {
-            LogStringCreator(L"Ожидание ивента канала неожиданно завершилось. GLE=%d.\n", (const wchar_t*)GetLastError());
+            LogStringCreator(L"Ожидание ивента канала неожиданно завершилось. E%d.\n", (const wchar_t*)GetLastError());
             return 0;
         }
         }
@@ -95,7 +95,7 @@ BOOL CreateAndConnectInstance(LPOVERLAPPED lpoOverlap)
         NULL);
     if (hPipe == INVALID_HANDLE_VALUE)
     {
-        LogStringCreator(L"Создание именованного канала неожиданно завершилось. GLE=%d.\n", (const wchar_t*)GetLastError());
+        LogStringCreator(L"Создание именованного канала неожиданно завершилось. E%d.\n", (const wchar_t*)GetLastError());
         return 0;
     }
     // Пытаемся подключить клиента к каналу
@@ -117,7 +117,7 @@ void WINAPI CompletedWriteRoutine(DWORD dwErr, DWORD cbWritten, LPOVERLAPPED lpO
             (LPOVERLAPPED)lpPipeInst,
             (LPOVERLAPPED_COMPLETION_ROUTINE)CompletedReadRoutine);
     else // Если произошла ошибка или клиент отключился
-        LogStringCreator(L"Ошибка или клиент отключился: %d\n", (const wchar_t*)GetLastError());
+        LogStringCreator(L"Клиент отключился: % d\n", (const wchar_t*)GetLastError());
     // Если не удалось запустить чтение – отключаем клиента и очищаем ресурсы
     if (!fRead)
         DisconnectAndClose(lpPipeInst);
@@ -143,7 +143,7 @@ void WINAPI CompletedReadRoutine(DWORD dwErr, DWORD cbBytesRead, LPOVERLAPPED lp
             (LPOVERLAPPED_COMPLETION_ROUTINE)CompletedWriteRoutine);
     }
     else // Если произошла ошибка или клиент закрыл соединение
-        LogStringCreator(L"Ошибка или клиент отключился: %d\n", (const wchar_t*)GetLastError());
+        LogStringCreator(L"Клиент отключился: %d\n", (const wchar_t*)GetLastError());
     // Если не удалось запустить операцию записи – отключаем клиента
     if (!fWrite)
         DisconnectAndClose(lpPipeInst);
@@ -407,49 +407,109 @@ INT_PTR CALLBACK About(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
 }
 
 // Инициализация элементов управления окна
+//void OnCreate(HWND hWnd)
+//{
+//    InitCommonControls();
+//
+//    // Создаем кнопку для запуска сервера
+//    hButtonStart = CreateWindow(L"BUTTON", L"Запустить сервер",
+//        WS_VISIBLE | WS_CHILD | BS_FLAT,
+//        0, 0, 350, 50, hWnd, (HMENU)IDC_BTN_START, hInst, NULL);
+//
+//    // Создаем кнопку для остановки сервера (изначально отключена)
+//    hButtonClose = CreateWindow(L"BUTTON", L"Остановить сервер",
+//        WS_VISIBLE | WS_CHILD | BS_FLAT | WS_DISABLED,
+//        350, 0, 350, 50, hWnd, (HMENU)IDC_BTN_STOP, hInst, NULL);
+//
+//    // Кнопка выхода
+//    hButtonExit = CreateWindow(L"BUTTON", L"Выход",
+//        WS_CHILD | WS_VISIBLE,
+//        700, 0, 80, 50, hWnd, (HMENU)IDC_BTN_EXIT, hInst, NULL);
+//
+//    // Статические метки для сообщений
+//    HWND hLabel1 = CreateWindow(L"STATIC", L"Сообщение", WS_CHILD | WS_VISIBLE,
+//        10, 70, 380, 20, hWnd, (HMENU)301, hInst, NULL);
+//    HWND hLabel2 = CreateWindow(L"STATIC", L"Информация", WS_CHILD | WS_VISIBLE,
+//        400, 70, 380, 20, hWnd, (HMENU)302, hInst, NULL);
+//
+//    // Элемент для вывода отправляемых сообщений (только для чтения)
+//    hEditMsg = CreateWindowEx(WS_EX_CLIENTEDGE, L"EDIT", L"",
+//        WS_CHILD | WS_VISIBLE | WS_VSCROLL | ES_LEFT | ES_MULTILINE | ES_AUTOVSCROLL | ES_READONLY,
+//        10, 90, 380, 300, hWnd, (HMENU)IDC_EDIT_MSG, hInst, NULL);
+//    if (hEditMsg == NULL) {
+//        MessageBox(hWnd, L"Не удалось создать элемент управления.", L"Ошибка", MB_ICONERROR);
+//        return;
+//    }
+//
+//    // Элемент для вывода информационных сообщений (только для чтения)
+//    hEditInfo = CreateWindowEx(WS_EX_CLIENTEDGE, L"EDIT", L"",
+//        WS_CHILD | WS_VISIBLE | WS_VSCROLL | ES_LEFT | ES_MULTILINE | ES_AUTOVSCROLL | ES_READONLY,
+//        400, 90, 380, 300, hWnd, (HMENU)IDC_EDIT_INFO, hInst, NULL);
+//    if (hEditInfo == NULL) {
+//        MessageBox(hWnd, L"Не удалось создать элемент управления.", L"Ошибка", MB_ICONERROR);
+//        return;
+//    }
+//}
+
 void OnCreate(HWND hWnd)
 {
     InitCommonControls();
 
-    // Создаем кнопку для запуска сервера
-    hButtonStart = CreateWindow(L"BUTTON", L"Запустить сервер",
-        WS_VISIBLE | WS_CHILD | BS_FLAT,
-        0, 0, 350, 50, hWnd, (HMENU)IDC_BTN_START, hInst, NULL);
+    // Фон окна
+    HBRUSH hBrushBackground = CreateSolidBrush(RGB(240, 240, 240));
+    SetClassLongPtr(hWnd, GCLP_HBRBACKGROUND, (LONG_PTR)hBrushBackground);
 
-    // Создаем кнопку для остановки сервера (изначально отключена)
-    hButtonClose = CreateWindow(L"BUTTON", L"Остановить сервер",
-        WS_VISIBLE | WS_CHILD | BS_FLAT | WS_DISABLED,
-        350, 0, 350, 50, hWnd, (HMENU)IDC_BTN_STOP, hInst, NULL);
+    // Цвета кнопок
+    HBRUSH hButtonBrush = CreateSolidBrush(RGB(200, 200, 255));
+
+    // Создаем кнопку для запуска сервера
+    hButtonStart = CreateWindow(L"BUTTON", L"Запустить",
+        WS_VISIBLE | WS_CHILD | BS_PUSHBUTTON,
+        10, 400, 250, 60, hWnd, (HMENU)IDC_BTN_START, hInst, NULL);
+
+    SendMessage(hButtonStart, WM_CTLCOLORBTN, (WPARAM)hButtonBrush, 0);
+
+    // Создаем кнопку для остановки сервера
+    hButtonClose = CreateWindow(L"BUTTON", L"Остановить",
+        WS_VISIBLE | WS_CHILD | BS_PUSHBUTTON | WS_DISABLED,
+        270, 400, 250, 60, hWnd, (HMENU)IDC_BTN_STOP, hInst, NULL);
+
+    SendMessage(hButtonClose, WM_CTLCOLORBTN, (WPARAM)hButtonBrush, 0);
 
     // Кнопка выхода
     hButtonExit = CreateWindow(L"BUTTON", L"Выход",
-        WS_CHILD | WS_VISIBLE,
-        700, 0, 80, 50, hWnd, (HMENU)IDC_BTN_EXIT, hInst, NULL);
+        WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON,
+        530, 400, 250, 60, hWnd, (HMENU)IDC_BTN_EXIT, hInst, NULL);
 
-    // Статические метки для сообщений
-    HWND hLabel1 = CreateWindow(L"STATIC", L"Сообщение", WS_CHILD | WS_VISIBLE,
-        10, 70, 380, 20, hWnd, (HMENU)301, hInst, NULL);
-    HWND hLabel2 = CreateWindow(L"STATIC", L"Информация", WS_CHILD | WS_VISIBLE,
-        400, 70, 380, 20, hWnd, (HMENU)302, hInst, NULL);
+    SendMessage(hButtonExit, WM_CTLCOLORBTN, (WPARAM)hButtonBrush, 0);
 
-    // Элемент для вывода отправляемых сообщений (только для чтения)
+    // Статические метки
+    HWND hLabel1 = CreateWindow(L"STATIC", L"Журнал сообщений", WS_CHILD | WS_VISIBLE,
+        10, 10, 380, 20, hWnd, (HMENU)301, hInst, NULL);
+    HWND hLabel2 = CreateWindow(L"STATIC", L"Системная информация", WS_CHILD | WS_VISIBLE,
+        400, 10, 380, 20, hWnd, (HMENU)302, hInst, NULL);
+
+    // Поле вывода сообщений
     hEditMsg = CreateWindowEx(WS_EX_CLIENTEDGE, L"EDIT", L"",
         WS_CHILD | WS_VISIBLE | WS_VSCROLL | ES_LEFT | ES_MULTILINE | ES_AUTOVSCROLL | ES_READONLY,
-        10, 90, 380, 300, hWnd, (HMENU)IDC_EDIT_MSG, hInst, NULL);
+        10, 30, 380, 350, hWnd, (HMENU)IDC_EDIT_MSG, hInst, NULL);
+
     if (hEditMsg == NULL) {
-        MessageBox(hWnd, L"Не удалось создать элемент управления.", L"Ошибка", MB_ICONERROR);
+        MessageBox(hWnd, L"Не удалось создать поле сообщений.", L"Ошибка", MB_ICONERROR);
         return;
     }
 
-    // Элемент для вывода информационных сообщений (только для чтения)
+    // Поле вывода информации
     hEditInfo = CreateWindowEx(WS_EX_CLIENTEDGE, L"EDIT", L"",
         WS_CHILD | WS_VISIBLE | WS_VSCROLL | ES_LEFT | ES_MULTILINE | ES_AUTOVSCROLL | ES_READONLY,
-        400, 90, 380, 300, hWnd, (HMENU)IDC_EDIT_INFO, hInst, NULL);
+        400, 30, 380, 350, hWnd, (HMENU)IDC_EDIT_INFO, hInst, NULL);
+
     if (hEditInfo == NULL) {
-        MessageBox(hWnd, L"Не удалось создать элемент управления.", L"Ошибка", MB_ICONERROR);
+        MessageBox(hWnd, L"Не удалось создать поле информации.", L"Ошибка", MB_ICONERROR);
         return;
     }
 }
+
 
 // Функция запуска сервера по нажатию кнопки "Запустить сервер"
 void OnStartServer(HWND hWnd)
